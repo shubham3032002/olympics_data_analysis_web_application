@@ -41,18 +41,64 @@ def fetch_medal_tally(df, year, country):
     
     return grouped
 
+# Combined function to count unique values over time (for nations and events)
+def count_over_time(df, col):
+    # Count the number of unique values (nations or events) per year
+    count_over_time = df.groupby('Year')[col].nunique().reset_index()
+    count_over_time.rename(columns={'Year': 'Edition', col: 'Count'}, inplace=True)
+    return count_over_time
 
-def data_over_time(df, col):
-    # Count the number of unique nations per year
-    nations_over_time = df.groupby('Year')[col].nunique().reset_index()
-    nations_over_time.rename(columns={'Year': 'Edition', col: 'Count'}, inplace=True)
-    return nations_over_time
+def most_successful(df, sport):
+    temp_df = df.dropna(subset=['Medal'])
 
-def event_over_time(df, col):
-    # Count the number of unique nations per year
-    nations_over_time = df.groupby('Year')[col].nunique().reset_index()
-    nations_over_time.rename(columns={'Year': 'Edition', col: 'Count'}, inplace=True)
-    return nations_over_time
+    if sport != 'Overall':
+        temp_df = temp_df[temp_df['Sport'] == sport]
+
+    # Get the top 15 athletes by medal count
+    athlete_counts = temp_df['Name'].value_counts().reset_index()
+    athlete_counts.columns = ['Name', 'Medal_Count']  # Rename columns for clarity
+    athlete_counts = athlete_counts.head(15)
+
+    # Merge to get more athlete details (e.g., Sport and Region)
+    top_athletes = athlete_counts.merge(df, on='Name', how='left')[['Name', 'Medal_Count', 'Sport', 'region']].drop_duplicates('Name')
+
+    return top_athletes
+
+def yearwise_medal_tally(df,country):
+    temp_df = df.dropna(subset=['Medal'])
+    temp_df.drop_duplicates(subset=['Team', 'NOC', 'Games', 'Year', 'City', 'Sport', 'Event', 'Medal'], inplace=True)
+
+    new_df = temp_df[temp_df['region'] == country]
+    final_df = new_df.groupby('Year').count()['Medal'].reset_index()
+
+    return final_df
 
 
 
+def country_event_heatmap(df,country):
+    temp_df = df.dropna(subset=['Medal'])
+    temp_df.drop_duplicates(subset=['Team', 'NOC', 'Games', 'Year', 'City', 'Sport', 'Event', 'Medal'], inplace=True)
+
+    new_df = temp_df[temp_df['region'] == country]
+
+    pt = new_df.pivot_table(index='Sport', columns='Year', values='Medal', aggfunc='count').fillna(0)
+    return pt
+
+
+
+def most_successful_countrywise(df, country):
+    # Filter out rows with missing medal values
+    temp_df = df.dropna(subset=['Medal'])
+
+    # Filter for the selected country
+    temp_df = temp_df[temp_df['region'] == country]
+
+    # Get the top 10 athletes by medal count
+    athlete_counts = temp_df['Name'].value_counts().reset_index()
+    athlete_counts.columns = ['Name', 'Medal_Count']  # Rename columns for clarity
+    athlete_counts = athlete_counts.head(10)
+
+    # Merge with the original DataFrame to get more details like Sport
+    top_athletes = athlete_counts.merge(df, on='Name', how='left')[['Name', 'Medal_Count', 'Sport']].drop_duplicates('Name')
+
+    return top_athletes
